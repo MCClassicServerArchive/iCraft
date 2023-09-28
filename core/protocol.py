@@ -301,17 +301,20 @@ class CoreServerProtocol(Protocol):
             if type == TYPE_INITIAL:
                 # Get the client's details
                 protocol, self.username, mppass, utype = parts
+                # Check their password
+                correct_pass = hashlib.md5(self.factory.salt + self.username).hexdigest()[-32:].strip("0")
+                classicube_pass = hashlib.md5(self.factory.classicubesalt + self.username).hexdigest()[-32:].strip("0")
+                mppass = mppass.strip("0")
+                if self.factory.verify_names and not self.transport.getHost().host.split(".")[0:2] == self.transport.getPeer().host.split(".")[0:2]:
+                    if mppass != correct_pass and mppass != classicube_pass:
+                        self.log("Kicked '%s'; invalid password (%s, Betacraft: %s, ClassiCube: %s)" % (self.username, mppass, correct_pass, classicube_pass))
+                        self.sendError("Incorrect authentication, please try again.")
+                        return
+                    elif mppass == classicube_pass:
+                        self.username += self.factory.classicube_suffix
                 if self.identified == True:
                     self.log("Kicked '%s'; already logged in to server" % (self.username))
                     self.sendError("You already logged in! Foolish bot owners.")
-                # Check their password
-                correct_pass = hashlib.md5(self.factory.salt + self.username).hexdigest()[-32:].strip("0")
-                mppass = mppass.strip("0")
-                if not self.transport.getHost().host.split(".")[0:2] == self.transport.getPeer().host.split(".")[0:2]:
-                    if mppass != correct_pass:
-                        self.log("Kicked '%s'; invalid password (%s, %s)" % (self.username, mppass, correct_pass))
-                        self.sendError("Incorrect authentication, please try again.")
-                        return
                 self.log("Connected, as '%s'" % self.username)
                 self.identified = True
                 # Are they banned?

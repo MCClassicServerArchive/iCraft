@@ -70,6 +70,8 @@ The Salt is also used to help verify users' identities.
         host = 'www.classicube.net'
         path = '/server/heartbeat'
         proto = 'http'
+        betahost = 'www.betacraft.uk'
+        betapath = '/heartbeat.jsp'
         try:
             self.factory.last_heartbeat = time.time()
             fh = urllib2.urlopen("%s://%s%s?%s" % (proto,host,path,urlencode({
@@ -78,12 +80,22 @@ The Salt is also used to help verify users' identities.
             "max": self.factory.max_clients,
             "name": self.factory.server_name,
             "public": self.factory.public,
+            "software": "iCraft",
+            "salt": self.factory.classicubesalt,
+            })))
+            bc = urllib2.urlopen("%s://%s%s?%s" % (proto,betahost,betapath,urlencode({
+            "port": self.factory.config.getint("network", "port"),
+            "users": len(self.factory.clients),
+            "max": self.factory.max_clients,
+            "name": self.factory.server_name,
+            "public": self.factory.public,
             "version": 7,
-            "salt": hashlib.md5("self.factory.salt").hexdigest(),
+            "salt": self.factory.salt,
             })))
             self.url = fh.read().strip()
             logging.log(logging.INFO, "Heartbeat Sent. Your URL (saved to docs/SERVERURL): %s" % self.url)
             open('docs/SERVERURL', 'w').write(self.url)
+            open('docs/BETACRAFTURL', 'w').write(bc.read().strip())
             if not self.factory.console.is_alive():
                 self.factory.console.run()
         except urllib2.URLError as r:
@@ -210,6 +222,8 @@ class CoreFactory(Factory):
             self.info_url = self.options_config.get("options", "info_url")
             self.away_kick = self.options_config.getboolean("options", "away_kick")
             self.away_time = self.options_config.getint("options", "away_time")
+            self.verify_names = self.options_config.getboolean("options", "verify_names")
+            self.classicube_suffix = self.options_config.get("options", "classicube_suffix")
             self.colors = self.options_config.getboolean("options", "colors")
             self.physics_limit = self.options_config.getint("worlds", "physics_limit")
             self.default_name = self.options_config.get("worlds", "default_name")
@@ -276,6 +290,7 @@ class CoreFactory(Factory):
             self.filter = self.filter + [[self.wordfilter.get("filter","s"+str(x)),self.wordfilter.get("filter","r"+str(x))]]
         # Salt, for the heartbeat server/verify-names
         self.salt = hashlib.md5(hashlib.md5(str(random.getrandbits(128))).digest()).hexdigest()[-32:].strip("0")
+        self.classicubesalt = hashlib.md5(hashlib.md5(str(random.getrandbits(128))).digest()).hexdigest()[-32:].strip("0")
         # Load up the plugins specified
         self.plugins_config = ConfigParser()
         try:
